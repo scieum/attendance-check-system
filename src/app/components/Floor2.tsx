@@ -117,19 +117,52 @@ function StateBar({
   );
 }
 
+function isEmptySeat(data?: SeatData): boolean {
+  if (!data) return true;
+  return data.name.trim() === "" && data.studentId.trim() === "";
+}
+
 function Seat({
   seatNumber,
   studentData,
   status,
   onPresent,
   onAbsent,
+  disabled,
 }: {
   seatNumber: number;
   studentData?: SeatData;
   status: SeatStatus;
   onPresent: () => void;
   onAbsent: () => void;
+  disabled?: boolean;
 }) {
+  if (disabled) {
+    return (
+      <div
+        className="backdrop-blur-[3.469px] bg-[rgba(0,0,0,0.15)] content-stretch flex flex-col gap-[8px] h-[91.379px] items-center overflow-clip pb-[7px] pt-[10.816px] px-[11.935px] relative rounded-[4.476px] shrink-0 w-[104.434px] opacity-40"
+        data-name="Seat"
+      >
+        <div className="content-stretch flex flex-col font-['Pretendard:ExtraBold',sans-serif] gap-[12.681px] items-center leading-[normal] not-italic relative shrink-0 text-center text-white/60 w-full">
+          <p className="relative shrink-0 text-[18px] w-full">{seatNumber}번</p>
+          <p className="relative shrink-0 text-[11px] whitespace-nowrap">빈 좌석</p>
+        </div>
+        <div className="content-stretch flex gap-[2.984px] items-center relative shrink-0 w-full">
+          <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-[#4e4d4d]/50">
+            <div className="flex items-center justify-center size-full">
+              <p className="font-['Pretendard:ExtraBold',sans-serif] text-[9px] text-white/40 whitespace-nowrap">출석</p>
+            </div>
+          </div>
+          <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-white/50">
+            <div className="flex items-center justify-center size-full">
+              <p className="font-['Pretendard:ExtraBold',sans-serif] text-[9px] text-black/40 whitespace-nowrap">결석</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="backdrop-blur-[3.469px] bg-[rgba(0,0,0,0.42)] content-stretch flex flex-col gap-[8px] h-[91.379px] items-center overflow-clip pb-[7px] pt-[10.816px] px-[11.935px] relative rounded-[4.476px] shrink-0 w-[104.434px]"
@@ -265,6 +298,7 @@ export default function Floor2({ onNavigateBack }: Floor2Props) {
       const newStatuses: Record<number, Record<number, SeatStatus>> = { 0: {}, 1: {}, 2: {}, 3: {} };
       ALL_SEATS.forEach((seatNum) => {
         const seat = sheetData[seatNum];
+        if (isEmptySeat(seat)) return;
         for (let p = 0; p < 4; p++) {
           const val = seat?.periods?.[p] || "";
           if (val === "X") {
@@ -399,6 +433,7 @@ export default function Floor2({ onNavigateBack }: Floor2Props) {
                         status={currentStatuses[num] || "none"}
                         onPresent={() => handlePresent(num)}
                         onAbsent={() => handleAbsent(num)}
+                        disabled={isEmptySeat(sheetData[num])}
                       />
                     </div>
                   ))}
