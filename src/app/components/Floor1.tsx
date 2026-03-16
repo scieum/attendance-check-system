@@ -1,5 +1,5 @@
 import svgPaths from "../../imports/svg-gd55q8d204";
-const img1RemovebgPreview1 = "/mascot-1f3f.png";
+const img1RemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-1f3f.png`;
 import { useState, useEffect, useRef } from "react";
 import { useGoogleSheet, SeatData } from "./useGoogleSheet";
 import { useResponsiveScale } from "./useResponsiveScale";

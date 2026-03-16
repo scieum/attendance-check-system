@@ -8,7 +8,7 @@ export default function Home({ onNavigateToSelectMode }: HomeProps) {
       <img
         alt=""
         className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-        src="/home-bg.png"
+        src={`${import.meta.env.BASE_URL}home-bg.png`}
       />
       <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-[20px] pt-[85px] px-[20px] bg-gradient-to-b from-transparent to-white">
         <div

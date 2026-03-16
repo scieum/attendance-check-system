@@ -1,6 +1,6 @@
-const imgImageRemovebgPreview1 = "/mascot-header.png";
-const img1RemovebgPreview1 = "/mascot-1f3f.png";
-const img2RemovebgPreview1 = "/mascot-2f.png";
+const imgImageRemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-header.png`;
+const img1RemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-1f3f.png`;
+const img2RemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-2f.png`;
 import { useState } from "react";
 import { useResponsiveScale } from "./useResponsiveScale";
 
