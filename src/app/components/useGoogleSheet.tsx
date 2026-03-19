@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { APPS_SCRIPT_URL } from "../config";
 
 const SHEET_ID = "1GZRZ31mAZ2jGK9FBum9s_1skQjY50RYyQ-PSy3MXfXg";
 
@@ -6,179 +7,215 @@ export interface SeatData {
   seatNumber: number;
   studentId: string;
   name: string;
+  /** 현재 요일 기준 4교시 값 배열 ("O" | "X" | "") */
   periods: string[];
+}
+
+// 요일 → 그룹 인덱스 (월=0, 화=1, 수=2, 금=3)
+const DAY_GROUP: Record<number, number> = { 1: 0, 2: 1, 3: 2, 5: 3 };
+
+export function getDayGroup(): number {
+  const day = new Date().getDay();
+  return DAY_GROUP[day] ?? 0; // 야자 없는 요일은 월요일(0) 기본값
 }
 
 // 글로벌 콜백 카운터 (중복 방지)
 let callbackCounter = 0;
 
 /**
- * JSONP 방식으로 Google Visualization API에서 데이터를 가져옵니다.
- * <script> 태그를 삽입하여 CORS를 완전히 우회합니다.
+ * JSONP 방식으로 구글 시트 데이터를 가져옵니다.
+ * 헤더 2행(요일·교시명)을 건너뛰고 A3:S 범위의 데이터만 읽습니다.
+ *
+ * 열 인덱스 (0-based):
+ *   0=자리번호, 1=학번, 2=이름
+ *   3+g*4+p = 요일그룹 g, 교시 p (g:0~3, p:0~3)
  */
-function fetchViaJsonp(sheetName: string): Promise<string[][]> {
+function fetchSheetData(sheetName: string): Promise<string[][]> {
   return new Promise((resolve, reject) => {
     const callbackName = `__gvizCallback_${Date.now()}_${callbackCounter++}`;
     const timeoutMs = 15000;
 
-    // 타임아웃 설정
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error(`시트 "${sheetName}" 데이터 로드 시간 초과 (${timeoutMs / 1000}초)`));
+      reject(new Error(`시트 "${sheetName}" 데이터 로드 시간 초과`));
     }, timeoutMs);
 
-    // 정리 함수
     const cleanup = () => {
       clearTimeout(timer);
-      delete (window as Record<string, unknown>)[callbackName];
-      const script = document.getElementById(callbackName);
-      if (script) script.remove();
+      delete (window as unknown as Record<string, unknown>)[callbackName];
+      document.getElementById(callbackName)?.remove();
     };
 
-    // 글로벌 콜백 함수 등록
-    (window as Record<string, unknown>)[callbackName] = (response: {
+    (window as unknown as Record<string, unknown>)[callbackName] = (response: {
       status?: string;
-      errors?: { reason?: string; message?: string; detailed_message?: string }[];
+      errors?: { detailed_message?: string; message?: string }[];
       table?: {
         cols: { label?: string }[];
         rows: { c: ({ v?: string | number | null; f?: string } | null)[] }[];
       };
     }) => {
       cleanup();
-
       try {
-        console.log("[useGoogleSheet] JSONP 응답 수신!", response);
-
         if (response.status === "error") {
           const errMsg = response.errors?.map((e) => e.detailed_message || e.message).join(", ");
           reject(new Error(`구글 시트 오류: ${errMsg}`));
           return;
         }
-
         const table = response.table;
-        if (!table || !table.cols || !table.rows) {
+        if (!table?.rows) {
           reject(new Error("테이블 데이터가 없습니다."));
           return;
         }
 
-        // 헤더 추출
-        const headers: string[] = table.cols.map((col) => col.label || "");
-        const rows: string[][] = [headers];
-
-        // 데이터 행 추출
-        for (const row of table.rows) {
-          const cells: string[] = row.c.map((cell) => {
+        const rows: string[][] = table.rows.map((row) =>
+          row.c.map((cell) => {
             if (!cell) return "";
-            if (cell.f !== undefined && cell.f !== null) return String(cell.f);
-            if (cell.v !== undefined && cell.v !== null) return String(cell.v);
+            if (cell.f != null) return String(cell.f);
+            if (cell.v != null) return String(cell.v);
             return "";
-          });
-          rows.push(cells);
-        }
+          })
+        );
 
         resolve(rows);
-      } catch (parseErr) {
-        reject(parseErr);
+      } catch (err) {
+        reject(err);
       }
     };
 
-    // <script> 태그 생성 및 삽입 (JSONP 호출)
     const script = document.createElement("script");
     script.id = callbackName;
-    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=responseHandler:${callbackName}&sheet=${encodeURIComponent(sheetName)}`;
+    // range=A3:S → 헤더 2행 건너뛰기, headers=0 → 응답에 헤더 없음
+    script.src =
+      `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq` +
+      `?tqx=responseHandler:${callbackName}` +
+      `&sheet=${encodeURIComponent(sheetName)}` +
+      `&range=A3:S&headers=0`;
     script.onerror = () => {
       cleanup();
-      reject(new Error(`스크립트 로드 실패. 시트 ID 또는 네트워크를 확인해주세요.`));
+      reject(new Error("스크립트 로드 실패. 시트 이름 또는 네트워크를 확인해주세요."));
     };
 
-    console.log(`[useGoogleSheet] JSONP 스크립트 삽입 (${sheetName}):`, script.src);
+    console.log(`[useGoogleSheet] JSONP 시작 (${sheetName}):`, script.src);
     document.head.appendChild(script);
   });
 }
 
-function findColumnIndex(headers: string[], candidates: string[]): number {
-  for (const candidate of candidates) {
-    const idx = headers.findIndex(
-      (h) => h.toLowerCase().replace(/\s/g, "") === candidate.toLowerCase().replace(/\s/g, "")
-    );
-    if (idx !== -1) return idx;
-  }
-  return -1;
+/**
+ * JSONP 방식으로 Apps Script availability 데이터를 가져옵니다.
+ * 응답: { seatNumber: { "dayGroup_periodIdx": true } }
+ */
+function fetchAvailability(sheetName: string): Promise<Record<string, Record<string, boolean>>> {
+  return new Promise((resolve) => {
+    const callbackName = `__availCallback_${Date.now()}_${callbackCounter++}`;
+    const timeoutMs = 15000;
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve({}); // availability 실패는 조용히 무시
+    }, timeoutMs);
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      delete (window as unknown as Record<string, unknown>)[callbackName];
+      document.getElementById(callbackName)?.remove();
+    };
+
+    (window as unknown as Record<string, unknown>)[callbackName] = (data: Record<string, Record<string, boolean>>) => {
+      cleanup();
+      if (data && !data.error) {
+        resolve(data);
+      } else {
+        console.warn("[useGoogleSheet] availability 응답 오류:", data?.error);
+        resolve({});
+      }
+    };
+
+    const script = document.createElement("script");
+    script.id = callbackName;
+    script.src =
+      `${APPS_SCRIPT_URL}?action=availability` +
+      `&sheet=${encodeURIComponent(sheetName)}` +
+      `&callback=${callbackName}`;
+    script.onerror = () => {
+      cleanup();
+      resolve({}); // 조용히 무시
+    };
+
+    console.log(`[useGoogleSheet] availability JSONP 시작 (${sheetName})`);
+    document.head.appendChild(script);
+  });
 }
 
+/**
+ * "Weekly 1F" / "Weekly 2F" / "Weekly 3F" 시트에서 좌석 데이터를 불러옵니다.
+ *
+ * 반환값:
+ *   data           - 좌석번호 → SeatData (periods는 오늘 요일의 4교시 값)
+ *   unavailableMap - 좌석번호 → { "dayGroup_periodIdx": true } (음영/X 셀)
+ *   dayGroup       - 오늘 요일 그룹 (0=월, 1=화, 2=수, 3=금)
+ */
 export function useGoogleSheet(sheetName: string) {
   const [data, setData] = useState<Record<number, SeatData>>({});
+  const [unavailableMap, setUnavailableMap] = useState<Record<number, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dayGroup] = useState<number>(getDayGroup);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAll = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        console.log(`[useGoogleSheet] JSONP 방식으로 시트 "${sheetName}" 로드 시작`);
+        const [rows, availability] = await Promise.all([
+          fetchSheetData(sheetName),
+          fetchAvailability(sheetName),
+        ]);
 
-        const rows = await fetchViaJsonp(sheetName);
+        console.log(`[useGoogleSheet] 행 수: ${rows.length}, 요일그룹: ${dayGroup}`);
 
-        console.log("[useGoogleSheet] 파싱된 행 수:", rows.length);
-        if (rows.length > 0) console.log("[useGoogleSheet] 헤더:", rows[0]);
-        if (rows.length > 1) console.log("[useGoogleSheet] 첫 번째 데이터:", rows[1]);
-
-        if (rows.length < 2) {
-          throw new Error(`시트 "${sheetName}"에 데이터가 없습니다. 탭 이름을 확인해주세요.`);
+        if (rows.length === 0) {
+          throw new Error(`시트 "${sheetName}"에 데이터가 없습니다. 시트 이름을 확인해주세요.`);
         }
-
-        const headers = rows[0];
-
-        // 컬럼 인덱스 자동 탐색
-        const seatIdx = findColumnIndex(headers, ["좌석번호", "좌석", "seat", "seatnumber", "자리"]);
-        const idIdx = findColumnIndex(headers, ["학번", "studentid", "id"]);
-        const nameIdx = findColumnIndex(headers, ["이름", "name", "성명", "학생이름"]);
-        const periodIdxs = [
-          findColumnIndex(headers, ["1교시"]),
-          findColumnIndex(headers, ["2교시"]),
-          findColumnIndex(headers, ["3교시"]),
-          findColumnIndex(headers, ["4교시"]),
-        ];
-
-        console.log("[useGoogleSheet] 컬럼 인덱스 - 좌석:", seatIdx, "학번:", idIdx, "이름:", nameIdx, "교시:", periodIdxs);
-
-        // Fallback: 컬럼 순서 (좌석번호, 학번, 이름, 1교시, 2교시, 3교시, 4교시)
-        const finalSeatIdx = seatIdx !== -1 ? seatIdx : 0;
-        const finalIdIdx = idIdx !== -1 ? idIdx : 1;
-        const finalNameIdx = nameIdx !== -1 ? nameIdx : 2;
-        const finalPeriodIdxs = periodIdxs.map((idx, i) => idx !== -1 ? idx : 3 + i);
 
         const seatMap: Record<number, SeatData> = {};
 
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          const seatNum = parseInt(row[finalSeatIdx], 10);
-          if (!isNaN(seatNum)) {
-            seatMap[seatNum] = {
-              seatNumber: seatNum,
-              studentId: row[finalIdIdx] || "",
-              name: row[finalNameIdx] || "",
-              periods: finalPeriodIdxs.map((idx) => (row[idx] || "").trim().toUpperCase()),
-            };
-          }
+        for (const row of rows) {
+          const seatNum = parseInt(row[0], 10);
+          if (isNaN(seatNum) || !seatNum) continue;
+
+          // 오늘 요일 기준 4교시 값 추출 (cols[3+g*4] ~ cols[3+g*4+3])
+          const baseIdx = 3 + dayGroup * 4;
+          const periods = [0, 1, 2, 3].map((p) => (row[baseIdx + p] || "").trim().toUpperCase());
+
+          seatMap[seatNum] = {
+            seatNumber: seatNum,
+            studentId: row[1] || "",
+            name: row[2] || "",
+            periods,
+          };
         }
 
-        console.log("[useGoogleSheet] 로드된 좌석 수:", Object.keys(seatMap).length);
-        console.log("[useGoogleSheet] 좌석 데이터 샘플:", Object.values(seatMap).slice(0, 3));
+        console.log(`[useGoogleSheet] 좌석 수: ${Object.keys(seatMap).length}`);
+
+        // availability 응답의 키는 문자열이므로 숫자로 변환
+        const availMap: Record<number, Record<string, boolean>> = {};
+        for (const key of Object.keys(availability)) {
+          availMap[parseInt(key, 10)] = availability[key];
+        }
 
         setData(seatMap);
+        setUnavailableMap(availMap);
       } catch (err) {
-        console.error("[useGoogleSheet] 최종 에러:", err);
+        console.error("[useGoogleSheet] 오류:", err);
         setError(err instanceof Error ? err.message : "알 수 없는 오류");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [sheetName]);
+    fetchAll();
+  }, [sheetName, dayGroup]);
 
-  return { data, loading, error };
+  return { data, unavailableMap, dayGroup, loading, error };
 }

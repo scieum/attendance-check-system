@@ -1,7 +1,7 @@
 import svgPaths from "../../imports/svg-d7huhobbv7";
 const img1RemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-1f3f.png`;
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { useGoogleSheet, SeatData } from "./useGoogleSheet";
+import { useGoogleSheet, getDayGroup, SeatData } from "./useGoogleSheet";
 import { useResponsiveScale } from "./useResponsiveScale";
 import { useAutoPeriod } from "./useAutoPeriod";
 
@@ -129,6 +129,7 @@ function Seat({
   onPresent,
   onAbsent,
   disabled,
+  blocked,
 }: {
   seatNumber: number;
   studentData?: SeatData;
@@ -136,6 +137,7 @@ function Seat({
   onPresent: () => void;
   onAbsent: () => void;
   disabled?: boolean;
+  blocked?: boolean;
 }) {
   if (disabled) {
     return (
@@ -156,6 +158,32 @@ function Seat({
           <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-white/50">
             <div className="flex items-center justify-center size-full">
               <p className="font-['Pretendard:ExtraBold',sans-serif] text-[9px] text-black/40 whitespace-nowrap">결석</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (blocked) {
+    return (
+      <div
+        className="backdrop-blur-[3.469px] bg-[rgba(0,0,0,0.55)] content-stretch flex flex-col gap-[8px] h-[91.379px] items-center overflow-clip pb-[7px] pt-[10.816px] px-[11.935px] relative rounded-[4.476px] shrink-0 w-[104.434px] pointer-events-none select-none"
+        data-name="Seat"
+      >
+        <div className="content-stretch flex flex-col font-['Pretendard:ExtraBold',sans-serif] gap-[12.681px] items-center leading-[normal] not-italic relative shrink-0 text-center text-white/50 w-full">
+          <p className="relative shrink-0 text-[18px] w-full">{seatNumber}번</p>
+          <p className="relative shrink-0 text-[11px] whitespace-nowrap">{studentData ? `${studentData.studentId} ${studentData.name}` : "학번 이름"}</p>
+        </div>
+        <div className="content-stretch flex gap-[2.984px] items-center relative shrink-0 w-full">
+          <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-[#4e4d4d]/40">
+            <div className="flex items-center justify-center size-full">
+              <p className="font-['Pretendard:ExtraBold',sans-serif] text-[9px] text-white/50 whitespace-nowrap">출석</p>
+            </div>
+          </div>
+          <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-white/20">
+            <div className="flex items-center justify-center size-full">
+              <p className="font-['Pretendard:ExtraBold',sans-serif] text-[9px] text-white/50 whitespace-nowrap">결석</p>
             </div>
           </div>
         </div>
@@ -298,7 +326,7 @@ export default function Floor3({ onNavigateBack }: Floor3Props) {
     0: {}, 1: {}, 2: {}, 3: {},
   });
   const [isSending, setIsSending] = useState(false);
-  const { data: sheetData, loading, error } = useGoogleSheet("3F");
+  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly 3F");
   const { scale } = useResponsiveScale({ baseWidth: 1920, baseHeight: 1080 });
   const initializedRef = useRef(false);
   const gridWrapperRef = useRef<HTMLDivElement>(null);
@@ -338,6 +366,13 @@ export default function Floor3({ onNavigateBack }: Floor3Props) {
 
   const currentStatuses = periodStatuses[selectedPeriod] || {};
   const presentCount = Object.values(currentStatuses).filter((s) => s === "present").length;
+
+  const isBlocked = (seatNum: number): boolean => {
+    const key = `${getDayGroup()}_${selectedPeriod}`;
+    if (unavailableMap[seatNum]?.[key]) return true;
+    const val = sheetData[seatNum]?.periods?.[selectedPeriod];
+    return val === "X";
+  };
 
   const handlePresent = (num: number) => {
     setPeriodStatuses((prev) => {
@@ -457,6 +492,7 @@ export default function Floor3({ onNavigateBack }: Floor3Props) {
                           onPresent={() => handlePresent(num)}
                           onAbsent={() => handleAbsent(num)}
                           disabled={isEmptySeat(sheetData[num])}
+                          blocked={!isEmptySeat(sheetData[num]) && isBlocked(num)}
                         />
                       </div>
                     ))}

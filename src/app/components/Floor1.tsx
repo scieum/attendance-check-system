@@ -1,7 +1,7 @@
 import svgPaths from "../../imports/svg-gd55q8d204";
 const img1RemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-1f3f.png`;
 import { useState, useEffect, useRef } from "react";
-import { useGoogleSheet, SeatData } from "./useGoogleSheet";
+import { useGoogleSheet, getDayGroup, SeatData } from "./useGoogleSheet";
 import { useResponsiveScale } from "./useResponsiveScale";
 import { useAutoPeriod } from "./useAutoPeriod";
 
@@ -145,6 +145,7 @@ function Seat({
   onPresent,
   onAbsent,
   disabled,
+  blocked,
 }: {
   seatNumber: number;
   studentData?: SeatData;
@@ -152,7 +153,9 @@ function Seat({
   onPresent: () => void;
   onAbsent: () => void;
   disabled?: boolean;
+  blocked?: boolean;
 }) {
+  // 빈 좌석
   if (disabled) {
     return (
       <div
@@ -172,6 +175,35 @@ function Seat({
           <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-white/50">
             <div className="flex items-center justify-center size-full">
               <p className="font-['NanumSquare:ExtraBold',sans-serif] text-[9px] text-black/40 whitespace-nowrap">결석</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 음영(불가) 또는 미리 X 처리된 좌석 — 학생 정보는 보이지만 클릭 불가
+  if (blocked) {
+    return (
+      <div
+        className="backdrop-blur-[3.469px] bg-[rgba(0,0,0,0.55)] content-stretch flex flex-col gap-[8px] h-[91.379px] items-center overflow-clip pb-[7px] pt-[10.816px] px-[11.935px] relative rounded-[4.476px] shrink-0 w-[104.434px] pointer-events-none select-none"
+        data-name="Seat"
+      >
+        <div className="content-stretch flex flex-col font-['NanumSquare:ExtraBold',sans-serif] gap-[12.681px] items-center leading-[normal] not-italic relative shrink-0 text-center text-white/50 w-full">
+          <p className="relative shrink-0 text-[18px] w-full">{seatNumber}번</p>
+          <p className="relative shrink-0 text-[11px] whitespace-nowrap">
+            {studentData ? `${studentData.studentId} ${studentData.name}` : "—"}
+          </p>
+        </div>
+        <div className="content-stretch flex gap-[2.984px] items-center relative shrink-0 w-full">
+          <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-[#4e4d4d]/40">
+            <div className="flex items-center justify-center size-full">
+              <p className="font-['NanumSquare:ExtraBold',sans-serif] text-[9px] text-white/30 whitespace-nowrap">출석</p>
+            </div>
+          </div>
+          <div className="flex-[1_0_0] h-[19.395px] min-h-px min-w-px relative rounded-[2.984px] bg-white/20">
+            <div className="flex items-center justify-center size-full">
+              <p className="font-['NanumSquare:ExtraBold',sans-serif] text-[9px] text-white/30 whitespace-nowrap">결석</p>
             </div>
           </div>
         </div>
@@ -230,12 +262,14 @@ function SeatRow({
   statuses,
   onPresent,
   onAbsent,
+  isBlocked,
 }: {
   seats: number[];
   sheetData: Record<number, SeatData>;
   statuses: Record<number, SeatStatus>;
   onPresent: (num: number) => void;
   onAbsent: (num: number) => void;
+  isBlocked: (num: number) => boolean;
 }) {
   return (
     <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
@@ -248,6 +282,7 @@ function SeatRow({
           onPresent={() => onPresent(num)}
           onAbsent={() => onAbsent(num)}
           disabled={isEmptySeat(sheetData[num])}
+          blocked={!isEmptySeat(sheetData[num]) && isBlocked(num)}
         />
       ))}
     </div>
@@ -310,7 +345,7 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
     0: {}, 1: {}, 2: {}, 3: {},
   });
   const [isSending, setIsSending] = useState(false);
-  const { data: sheetData, loading, error } = useGoogleSheet("1F");
+  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly 1F");
   const { scale } = useResponsiveScale({ baseWidth: 1920, baseHeight: 1080 });
   const initializedRef = useRef(false);
 
@@ -339,6 +374,14 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
 
   const currentStatuses = periodStatuses[selectedPeriod] || {};
   const presentCount = Object.values(currentStatuses).filter((s) => s === "present").length;
+
+  // 음영(gray) 셀이거나 시트에 미리 X가 입력된 좌석 → 선택 불가
+  const isBlocked = (seatNum: number): boolean => {
+    const key = `${getDayGroup()}_${selectedPeriod}`;
+    if (unavailableMap[seatNum]?.[key]) return true;
+    const val = sheetData[seatNum]?.periods?.[selectedPeriod];
+    return val === "X";
+  };
 
   const handlePresent = (num: number) => {
     setPeriodStatuses((prev) => {
@@ -442,9 +485,9 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
                 <div className="content-stretch flex flex-col gap-[28px] items-center justify-center relative shrink-0">
                   <StateBar selectedPeriod={selectedPeriod} onSelectPeriod={setSelectedPeriod} />
                   <div className="content-stretch flex flex-col gap-[36px] items-center justify-center relative shrink-0">
-                    <SeatRow seats={row1} sheetData={sheetData} statuses={currentStatuses} onPresent={handlePresent} onAbsent={handleAbsent} />
-                    <SeatRow seats={row2} sheetData={sheetData} statuses={currentStatuses} onPresent={handlePresent} onAbsent={handleAbsent} />
-                    <SeatRow seats={row3} sheetData={sheetData} statuses={currentStatuses} onPresent={handlePresent} onAbsent={handleAbsent} />
+                    <SeatRow seats={row1} sheetData={sheetData} statuses={currentStatuses} onPresent={handlePresent} onAbsent={handleAbsent} isBlocked={isBlocked} />
+                    <SeatRow seats={row2} sheetData={sheetData} statuses={currentStatuses} onPresent={handlePresent} onAbsent={handleAbsent} isBlocked={isBlocked} />
+                    <SeatRow seats={row3} sheetData={sheetData} statuses={currentStatuses} onPresent={handlePresent} onAbsent={handleAbsent} isBlocked={isBlocked} />
                   </div>
                 </div>
               </div>
