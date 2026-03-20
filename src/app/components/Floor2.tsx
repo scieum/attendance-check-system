@@ -322,7 +322,7 @@ export default function Floor2({ onNavigateBack }: Floor2Props) {
     0: {}, 1: {}, 2: {}, 3: {},
   });
   const [isSending, setIsSending] = useState(false);
-  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly 2F");
+  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly(2F)");
   const { scale } = useResponsiveScale({ baseWidth: 1920, baseHeight: 1080 });
   const initializedRef = useRef(false);
 

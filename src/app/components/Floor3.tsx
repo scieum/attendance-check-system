@@ -325,7 +325,7 @@ export default function Floor3({ onNavigateBack }: Floor3Props) {
     0: {}, 1: {}, 2: {}, 3: {},
   });
   const [isSending, setIsSending] = useState(false);
-  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly 3F");
+  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly(3F)");
   const { scale } = useResponsiveScale({ baseWidth: 1920, baseHeight: 1080 });
   const initializedRef = useRef(false);
   const gridWrapperRef = useRef<HTMLDivElement>(null);

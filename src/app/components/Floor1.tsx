@@ -344,7 +344,7 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
     0: {}, 1: {}, 2: {}, 3: {},
   });
   const [isSending, setIsSending] = useState(false);
-  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly 1F");
+  const { data: sheetData, unavailableMap, loading, error } = useGoogleSheet("Weekly(1F)");
   const { scale } = useResponsiveScale({ baseWidth: 1920, baseHeight: 1080 });
   const initializedRef = useRef(false);
 
