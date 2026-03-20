@@ -172,7 +172,10 @@ export function useGoogleSheet(sheetName: string) {
           fetchAvailability(sheetName),
         ]);
 
-        console.log(`[useGoogleSheet] 행 수: ${rows.length}, 요일그룹: ${dayGroup}`);
+        console.log(`[useGoogleSheet][${sheetName}] 행 수: ${rows.length}, 요일그룹: ${dayGroup}`);
+        if (rows.length > 0) {
+          console.log(`[useGoogleSheet][${sheetName}] 첫 행 샘플:`, rows[0]);
+        }
 
         if (rows.length === 0) {
           throw new Error(`시트 "${sheetName}"에 데이터가 없습니다. 시트 이름을 확인해주세요.`);
@@ -196,7 +199,9 @@ export function useGoogleSheet(sheetName: string) {
           };
         }
 
-        console.log(`[useGoogleSheet] 좌석 수: ${Object.keys(seatMap).length}`);
+        const seatNums = Object.keys(seatMap).map(Number);
+        console.log(`[useGoogleSheet][${sheetName}] 파싱된 좌석 수: ${seatNums.length}, 범위: ${Math.min(...seatNums)||'-'}~${Math.max(...seatNums)||'-'}`);
+        console.log(`[useGoogleSheet][${sheetName}] 이름 있는 좌석: ${seatNums.filter(n => seatMap[n].name).length}개`);
 
         // availability 응답의 키는 문자열이므로 숫자로 변환
         const availMap: Record<number, Record<string, boolean>> = {};
