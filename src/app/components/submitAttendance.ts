@@ -23,7 +23,7 @@ export async function submitAttendance(payload: SubmitPayload, maxRetries = 3): 
       await fetch(APPS_SCRIPT_URL, {
         method: "POST",
         mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body,
       });
       return; // 성공

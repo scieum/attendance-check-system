@@ -134,7 +134,7 @@ function StateBar({
 }
 
 function isEmptySeat(data?: SeatData): boolean {
-  return !data;
+  return !data || !data.name?.trim();
 }
 
 function Seat({
@@ -357,6 +357,8 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
         if (isEmptySeat(seat)) return;
         for (let p = 0; p < 4; p++) {
           const val = seat?.periods?.[p] || "";
+          const periodKey = `${getDayGroup()}_${p}`;
+          if (unavailableMap[seatNum]?.[periodKey]) continue; // 음영(해당 교시 없음) 제외
           if (val === "X") {
             newStatuses[p][seatNum] = "absent";
           } else if (val === "O") {
@@ -369,10 +371,9 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
       setPeriodStatuses(newStatuses);
       console.log(`[Floor1] 시트 기존 값 반영 완료. ${selectedPeriod + 1}교시 기준 초기화.`);
     }
-  }, [loading, sheetData, selectedPeriod]);
+  }, [loading, sheetData, selectedPeriod, unavailableMap]);
 
   const currentStatuses = periodStatuses[selectedPeriod] || {};
-  const presentCount = Object.values(currentStatuses).filter((s) => s === "present").length;
 
   // 음영(gray) 셀이거나 시트에 미리 X가 입력된 좌석 → 선택 불가
   const isBlocked = (seatNum: number): boolean => {
@@ -381,6 +382,10 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
     const val = sheetData[seatNum]?.periods?.[selectedPeriod];
     return val === "X";
   };
+
+  const presentCount = Object.entries(currentStatuses)
+    .filter(([seatNum, s]) => s === "present" && !isBlocked(parseInt(seatNum)))
+    .length;
 
   const handlePresent = (num: number) => {
     setPeriodStatuses((prev) => {
