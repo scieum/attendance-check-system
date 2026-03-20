@@ -48,7 +48,10 @@ function doPost(e) {
   }
 
   try {
-    var data = JSON.parse(e.postData.contents);
+    // application/x-www-form-urlencoded 방식: e.parameter.payload
+    // text/plain 방식(fallback): e.postData.contents
+    var raw = (e.parameter && e.parameter.payload) ? e.parameter.payload : e.postData.contents;
+    var data = JSON.parse(raw);
     var floor = data.floor;
     var period = data.period; // 0~3
     var rows = data.rows;
@@ -81,18 +84,26 @@ function doPost(e) {
       seatMap[rows[i].seatNumber] = rows[i].value;
     }
 
-    // 해당 열에 값 쓰기 (gray 셀은 값이 비어있어 덮어쓰기 무해)
+    // 해당 열에 값 쓰기 + 드롭다운 유효성 검사(O/X) 설정
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(["O", "X"], true)
+      .setAllowInvalid(false)
+      .build();
+
     var values = [];
     for (var j = 0; j < seatColumn.length; j++) {
       var seatNum = parseInt(seatColumn[j][0]);
       if (isNaN(seatNum) || !seatNum) {
         values.push([""]);
       } else {
-        values.push([seatMap[seatNum] !== undefined ? seatMap[seatNum] : ""]);
+        var v = seatMap[seatNum];
+        values.push([v !== undefined ? v : ""]);
       }
     }
 
-    sheet.getRange(DATA_START_ROW, col, values.length, 1).setValues(values);
+    var range = sheet.getRange(DATA_START_ROW, col, values.length, 1);
+    range.setDataValidation(rule);
+    range.setValues(values);
 
     return json({
       success: true,

@@ -16,20 +16,17 @@ interface SubmitPayload {
  * 서버 혼잡 시 최대 3회 재시도합니다.
  */
 export async function submitAttendance(payload: SubmitPayload, maxRetries = 3): Promise<void> {
-  const body = JSON.stringify(payload);
-
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await fetch(APPS_SCRIPT_URL, {
         method: "POST",
         mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ payload: JSON.stringify(payload) }),
       });
-      return; // 성공
+      return;
     } catch (err) {
       if (attempt === maxRetries) throw err;
-      // 재시도 전 대기 (1초, 2초, ...)
       await new Promise((res) => setTimeout(res, attempt * 1000));
     }
   }
