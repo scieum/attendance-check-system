@@ -89,7 +89,7 @@ function fetchSheetData(sheetName: string): Promise<string[][]> {
       `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq` +
       `?tqx=responseHandler:${callbackName}` +
       `&sheet=${encodeURIComponent(sheetName)}` +
-      `&range=A3:S&headers=0`;
+      `&range=B7:T&headers=0`;
     script.onerror = () => {
       cleanup();
       reject(new Error("스크립트 로드 실패. 시트 이름 또는 네트워크를 확인해주세요."));

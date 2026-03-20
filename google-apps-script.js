@@ -15,22 +15,21 @@
 //    APPS_SCRIPT_URL 에 붙여넣기
 //
 // [시트 구조] (각 탭: "Weekly 1F", "Weekly 2F", "Weekly 3F")
-//   1행: 날짜 그룹 헤더 (월), (화), (수), (금) - 각 4칸 병합
-//   2행: 자리번호 | 학번 | 이름 | 1교시 | 2교시 | 3교시 | 4교시 | (반복×4요일)
-//   3행~: 실제 데이터
+//   5~6행: 헤더 (날짜 그룹 + 자리번호/학번/이름/교시 레이블)
+//   7행~: 실제 데이터
 //
 // [열 매핑] (1-indexed)
-//   A(1)=자리번호, B(2)=학번, C(3)=이름
-//   D(4)=월1교시, E(5)=월2교시, F(6)=월3교시, G(7)=월4교시
-//   H(8)=화1교시, I(9)=화2교시, J(10)=화3교시, K(11)=화4교시
-//   L(12)=수1교시, M(13)=수2교시, N(14)=수3교시, O(15)=수4교시
-//   P(16)=금1교시, Q(17)=금2교시, R(18)=금3교시, S(19)=금4교시
+//   B(2)=자리번호, C(3)=학번, D(4)=이름
+//   E(5)=월1교시, F(6)=월2교시, G(7)=월3교시, H(8)=월4교시
+//   I(9)=화1교시, J(10)=화2교시, K(11)=화3교시, L(12)=화4교시
+//   M(13)=수1교시, N(14)=수2교시, O(15)=수3교시, P(16)=수4교시
+//   Q(17)=금1교시, R(18)=금2교시, S(19)=금3교시, T(20)=금4교시
 // ============================================================
 
 var DAY_GROUP = { 1: 0, 2: 1, 3: 2, 5: 3 }; // 월=0, 화=1, 수=2, 금=3
 var DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 var YAJA_DAYS = [1, 2, 3, 5]; // 월, 화, 수, 금
-var DATA_START_ROW = 3; // 헤더 2행 이후 데이터 시작
+var DATA_START_ROW = 7; // 헤더 6행 이후 데이터 시작
 
 /**
  * POST 요청: 출석 데이터를 현재 요일·교시에 맞는 열에 기록합니다.
@@ -62,8 +61,8 @@ function doPost(e) {
       return json({ error: "오늘은 야자 요일이 아닙니다: " + DAY_NAMES[dayOfWeek] + "요일" });
     }
 
-    // 열 번호 계산: 1-indexed (A=1, D=4, ...)
-    var col = 4 + group * 4 + period;
+    // 열 번호 계산: 1-indexed (B=2, E=5, ...)
+    var col = 5 + group * 4 + period;
     var sheetName = "Weekly " + floor;
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -74,7 +73,7 @@ function doPost(e) {
     if (lastRow < DATA_START_ROW) return json({ error: "시트에 데이터가 없습니다." });
 
     var numRows = lastRow - DATA_START_ROW + 1;
-    var seatColumn = sheet.getRange(DATA_START_ROW, 1, numRows, 1).getValues();
+    var seatColumn = sheet.getRange(DATA_START_ROW, 2, numRows, 1).getValues(); // B열 = 자리번호
 
     // 좌석번호 → 출석값 맵
     var seatMap = {};
@@ -147,10 +146,10 @@ function getAvailability(sheetName, callbackName) {
     if (lastRow < DATA_START_ROW) return jsonp({}, callbackName);
 
     var numDataRows = lastRow - DATA_START_ROW + 1;
-    var totalCols = 3 + 4 * 4; // 19열 (A~S)
+    var totalCols = 3 + 4 * 4; // 19열 (B~T)
 
-    var values = sheet.getRange(DATA_START_ROW, 1, numDataRows, totalCols).getValues();
-    var bgs = sheet.getRange(DATA_START_ROW, 1, numDataRows, totalCols).getBackgrounds();
+    var values = sheet.getRange(DATA_START_ROW, 2, numDataRows, totalCols).getValues(); // B열부터
+    var bgs = sheet.getRange(DATA_START_ROW, 2, numDataRows, totalCols).getBackgrounds();
 
     var result = {};
 
