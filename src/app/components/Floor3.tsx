@@ -354,7 +354,7 @@ export default function Floor3({ onNavigateBack }: Floor3Props) {
           } else if (val === "O") {
             newStatuses[p][seatNum] = "present";
           } else {
-            newStatuses[p][seatNum] = "present";
+            newStatuses[p][seatNum] = p === 3 ? "absent" : "present";
           }
         }
       });
