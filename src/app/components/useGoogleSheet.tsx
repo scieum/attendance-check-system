@@ -3,6 +3,13 @@ import { APPS_SCRIPT_URL } from "../config";
 
 const SHEET_ID = "1GZRZ31mAZ2jGK9FBum9s_1skQjY50RYyQ-PSy3MXfXg";
 
+// 시트별 고정 데이터 범위 (끝 행)
+const SHEET_END_ROW: Record<string, number> = {
+  "Weekly(1F)": 54,
+  "Weekly(2F)": 35,
+  "Weekly(3F)": 33,
+};
+
 export interface SeatData {
   seatNumber: number;
   studentId: string;
@@ -89,7 +96,7 @@ function fetchSheetData(sheetName: string): Promise<string[][]> {
       `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq` +
       `?tqx=responseHandler:${callbackName}` +
       `&sheet=${encodeURIComponent(sheetName)}` +
-      `&range=B7:T&headers=0`;
+      `&range=B7:T${SHEET_END_ROW[sheetName] || ""}&headers=0`;
     script.onerror = () => {
       cleanup();
       reject(new Error("스크립트 로드 실패. 시트 이름 또는 네트워크를 확인해주세요."));

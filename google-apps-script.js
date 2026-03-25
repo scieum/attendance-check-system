@@ -31,6 +31,13 @@ var DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 var YAJA_DAYS = [1, 2, 3, 5]; // 월, 화, 수, 금
 var DATA_START_ROW = 7; // 헤더 6행 이후 데이터 시작
 
+// 시트별 고정 끝 행
+var SHEET_END_ROW = {
+  "Weekly(1F)": 54,
+  "Weekly(2F)": 35,
+  "Weekly(3F)": 33
+};
+
 /**
  * POST 요청: 출석 데이터를 현재 요일·교시에 맞는 열에 기록합니다.
  *
@@ -72,10 +79,10 @@ function doPost(e) {
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) return json({ error: "시트를 찾을 수 없습니다: " + sheetName });
 
-    var lastRow = sheet.getLastRow();
-    if (lastRow < DATA_START_ROW) return json({ error: "시트에 데이터가 없습니다." });
+    var endRow = SHEET_END_ROW[sheetName] || sheet.getLastRow();
+    if (endRow < DATA_START_ROW) return json({ error: "시트에 데이터가 없습니다." });
 
-    var numRows = lastRow - DATA_START_ROW + 1;
+    var numRows = endRow - DATA_START_ROW + 1;
     var seatColumn = sheet.getRange(DATA_START_ROW, 2, numRows, 1).getValues(); // B열 = 자리번호
 
     // 좌석번호 → 출석값 맵
@@ -178,10 +185,10 @@ function handleSubmit(payloadStr, callbackName) {
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) return jsonp({ error: "시트를 찾을 수 없습니다: " + sheetName }, callbackName);
 
-    var lastRow = sheet.getLastRow();
-    if (lastRow < DATA_START_ROW) return jsonp({ error: "시트에 데이터가 없습니다." }, callbackName);
+    var endRow = SHEET_END_ROW[sheetName] || sheet.getLastRow();
+    if (endRow < DATA_START_ROW) return jsonp({ error: "시트에 데이터가 없습니다." }, callbackName);
 
-    var numRows = lastRow - DATA_START_ROW + 1;
+    var numRows = endRow - DATA_START_ROW + 1;
     var seatColumn = sheet.getRange(DATA_START_ROW, 2, numRows, 1).getValues();
 
     var seatMap = {};
@@ -234,10 +241,10 @@ function getAvailability(sheetName, callbackName) {
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) return json({ error: "시트를 찾을 수 없습니다: " + sheetName });
 
-    var lastRow = sheet.getLastRow();
-    if (lastRow < DATA_START_ROW) return jsonp({}, callbackName);
+    var endRow = SHEET_END_ROW[sheetName] || sheet.getLastRow();
+    if (endRow < DATA_START_ROW) return jsonp({}, callbackName);
 
-    var numDataRows = lastRow - DATA_START_ROW + 1;
+    var numDataRows = endRow - DATA_START_ROW + 1;
     var totalCols = 3 + 4 * 4; // 19열 (B~T)
 
     var values = sheet.getRange(DATA_START_ROW, 2, numDataRows, totalCols).getValues(); // B열부터

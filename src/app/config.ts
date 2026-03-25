@@ -5,4 +5,4 @@
 // 설정 방법은 google-apps-script.js 파일을 참고하세요.
 // ============================================================
 export const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyD1ttAFlj3GmL1f8NAGP4c8vy8D8x_FA-YdA_546j0MRCQIxxetKDV1qtzCHogZ7ef3w/exec";
+  "https://script.google.com/macros/s/AKfycbwMn_K8jAWXjEiRht2Z4E7tJ6yJlisqjx6rc0uIiS1FNbbnWnj8lJYEk2zUH_-XnpkvUA/exec";

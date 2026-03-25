@@ -1,7 +1,7 @@
 import svgPaths from "../../imports/svg-gd55q8d204";
 const img1RemovebgPreview1 = `${import.meta.env.BASE_URL}mascot-1f3f.png`;
 import { useState, useEffect, useRef } from "react";
-import { useGoogleSheet, getDayGroup, SeatData } from "./useGoogleSheet";
+import { useGoogleSheet, SeatData } from "./useGoogleSheet";
 import { useResponsiveScale } from "./useResponsiveScale";
 import { useAutoPeriod } from "./useAutoPeriod";
 
@@ -357,8 +357,6 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
         if (isEmptySeat(seat)) return;
         for (let p = 0; p < 4; p++) {
           const val = seat?.periods?.[p] || "";
-          const periodKey = `${getDayGroup()}_${p}`;
-          if (unavailableMap[seatNum]?.[periodKey]) continue; // 음영(해당 교시 없음) 제외
           if (val === "X") {
             newStatuses[p][seatNum] = "absent";
           } else if (val === "O") {
@@ -376,11 +374,8 @@ export default function Floor1({ onNavigateBack }: Floor1Props) {
   const currentStatuses = periodStatuses[selectedPeriod] || {};
 
   // 음영(gray) 셀이거나 시트에 미리 X가 입력된 좌석 → 선택 불가
-  const isBlocked = (seatNum: number): boolean => {
-    const key = `${getDayGroup()}_${selectedPeriod}`;
-    if (unavailableMap[seatNum]?.[key]) return true;
-    const val = sheetData[seatNum]?.periods?.[selectedPeriod];
-    return val === "X";
+  const isBlocked = (_seatNum: number): boolean => {
+    return false;
   };
 
   const presentCount = Object.entries(currentStatuses)
